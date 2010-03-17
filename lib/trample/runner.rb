@@ -2,7 +2,7 @@ module Trample
   class Runner
     include Logging
 
-    attr_reader :config, :threads
+    attr_reader :config, :threads, :requests_fired
 
     def initialize(config)
       @config  = config
@@ -12,14 +12,16 @@ module Trample
     def trample
       logger.info "Starting trample..."
 
-      config.concurrency.times do
-        thread = Thread.new(@config) do |c|
-          Session.new(c).trample
+      config.concurrency.times do |id|
+        thread = Thread.new(@config, id) do |c, id|
+          Session.new(c, id).trample
         end
         threads << thread
       end
 
-      threads.each { |t| t.join }
+      threads.each do |t|
+        t.join
+      end
 
       logger.info "Trample completed..."
     end

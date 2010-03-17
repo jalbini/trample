@@ -3,12 +3,31 @@ module Trample
     include Logging
     include Timer
 
-    attr_reader :config, :response_times, :cookies, :last_response
+    attr_reader :config, :response_times, :cookies, :last_response, :thread_id
 
-    def initialize(config)
+    def self.request_speed
+      @@requests_sent / (Time.now - @@start_time)
+    end
+    
+    def self.response_speed
+      @@requests_returned / (Time.now - @@start_time)
+    end
+    
+    def self.average_response_time
+      @@total_response_time/@@requests_returned
+    end
+        
+    def initialize(config, thread_id)
       @config         = config
       @response_times = []
       @cookies        = {}
+      @thread_id      = thread_id
+      
+      # class variables to gauge speed
+      @@start_time          ||= Time.now
+      @@requests_sent       ||= 0
+      @@requests_returned   ||= 0
+      @@total_response_time ||= 0 
     end
 
     def trample
@@ -22,11 +41,19 @@ module Trample
 
     protected
       def hit(page)
+        # start timer and increment sent request count
+        start_time = Time.now      
+        @@requests_sent += 1
+          
         response_times << request(page)
-        # this is ugly, but it's the only way that I could get the test to pass
-        # because rr keeps a reference to the arguments, not a copy. ah well.
         @cookies = cookies.merge(last_response.cookies)
-        logger.info "#{page.request_method.to_s.upcase} #{page.url} #{response_times.last}s #{last_response.code}"
+                
+        # increment returned request count
+        @@total_response_time += Time.now - start_time
+        @@requests_returned += 1
+        if rand(5) == 0
+          logger.info "Current requests/sec: #{Session.request_speed.truncate}  Current responses/sec: #{Session.response_speed.truncate}  Average response time: " + "%.4f" % Session.average_response_time 
+        end
       end
 
       def request(page)

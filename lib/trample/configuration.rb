@@ -16,6 +16,11 @@ module Trample
       @iterations = value.first unless value.empty?
       @iterations
     end
+    
+    def throttle_server_address(*value)
+      @throttle_server_address = value.first unless value.empty?
+      @throttle_server_address
+    end
 
     def get(url, &block)
       @pages << Page.new(:get, url, block || {})
@@ -38,7 +43,8 @@ module Trample
       other.is_a?(Configuration) &&
         other.pages == pages &&
         other.concurrency == concurrency &&
-        other.iterations  == iterations
+        other.iterations  == iterations &&
+        other.throttle_server_address == throttle_server_address
     end
   end
 end
